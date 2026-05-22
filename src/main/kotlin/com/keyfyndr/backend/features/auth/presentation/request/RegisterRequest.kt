@@ -1,4 +1,4 @@
-package com.keyfyndr.backend.features.auth.dto.request
+package com.keyfyndr.backend.features.auth.presentation.request
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank

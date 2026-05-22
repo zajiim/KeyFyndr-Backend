@@ -1,10 +1,10 @@
-package com.keyfyndr.backend.features.auth.controller
+package com.keyfyndr.backend.features.auth.presentation.controller
 
 import com.keyfyndr.backend.common.response.ApiResponse
-import com.keyfyndr.backend.features.auth.dto.request.*
-import com.keyfyndr.backend.features.auth.dto.response.LoginResponse
-import com.keyfyndr.backend.features.auth.dto.response.RegisterResponse
-import com.keyfyndr.backend.features.auth.usecase.*
+import com.keyfyndr.backend.features.auth.domain.usecase.*
+import com.keyfyndr.backend.features.auth.presentation.request.*
+import com.keyfyndr.backend.features.auth.presentation.response.LoginResponse
+import com.keyfyndr.backend.features.auth.presentation.response.RegisterResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -15,6 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
+/**
+ * REST controller for the Auth feature.
+ *
+ * Architecture decisions:
+ * - No business logic in the controller — all operations delegate to use cases
+ * - JWT principal is extracted as UUID from the Authentication object
+ * - All auth endpoints are publicly accessible (configured in SecurityConfig)
+ * - All responses wrapped in ApiResponse for consistency
+ */
 @RestController
 @RequestMapping("/auth")
 class AuthController(

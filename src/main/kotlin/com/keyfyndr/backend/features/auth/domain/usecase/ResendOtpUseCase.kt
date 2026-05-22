@@ -1,8 +1,8 @@
-package com.keyfyndr.backend.features.auth.usecase
+package com.keyfyndr.backend.features.auth.domain.usecase
 
-import com.keyfyndr.backend.features.auth.dto.request.ResendOtpRequest
+import com.keyfyndr.backend.features.auth.presentation.request.ResendOtpRequest
 import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
-import com.keyfyndr.backend.features.auth.service.OtpService
+import com.keyfyndr.backend.features.auth.domain.service.OtpService
 import org.springframework.stereotype.Component
 
 @Component

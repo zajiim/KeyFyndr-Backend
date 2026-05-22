@@ -1,10 +1,10 @@
-package com.keyfyndr.backend.features.auth.usecase
+package com.keyfyndr.backend.features.auth.domain.usecase
 
-import com.keyfyndr.backend.features.auth.dto.request.RefreshTokenRequest
-import com.keyfyndr.backend.features.auth.dto.response.LoginResponse
+import com.keyfyndr.backend.features.auth.presentation.request.RefreshTokenRequest
+import com.keyfyndr.backend.features.auth.presentation.response.LoginResponse
 import com.keyfyndr.backend.features.auth.domain.repository.RefreshTokenRepository
 import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
-import com.keyfyndr.backend.features.auth.service.JwtService
+import com.keyfyndr.backend.features.auth.domain.service.JwtService
 import org.springframework.stereotype.Component
 import java.time.Instant
 

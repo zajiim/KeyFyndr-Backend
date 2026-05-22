@@ -1,11 +1,11 @@
-package com.keyfyndr.backend.features.auth.usecase
+package com.keyfyndr.backend.features.auth.domain.usecase
 
-import com.keyfyndr.backend.features.auth.dto.response.RegisterResponse
-import com.keyfyndr.backend.features.auth.dto.request.RegisterRequest
+import com.keyfyndr.backend.features.auth.presentation.response.RegisterResponse
+import com.keyfyndr.backend.features.auth.presentation.request.RegisterRequest
 import com.keyfyndr.backend.features.auth.domain.model.User
 import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
-import com.keyfyndr.backend.features.auth.service.OtpService
-import com.keyfyndr.backend.features.auth.service.PasswordHashService
+import com.keyfyndr.backend.features.auth.domain.service.OtpService
+import com.keyfyndr.backend.features.auth.domain.service.PasswordHashService
 import org.springframework.stereotype.Component
 
 @Component

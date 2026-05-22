@@ -1,4 +1,4 @@
-package com.keyfyndr.backend.features.auth.usecase
+package com.keyfyndr.backend.features.auth.domain.usecase
 
 import com.keyfyndr.backend.features.auth.domain.repository.RefreshTokenRepository
 import org.springframework.stereotype.Component

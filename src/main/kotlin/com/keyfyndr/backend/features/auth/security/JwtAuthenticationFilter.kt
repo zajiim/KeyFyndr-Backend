@@ -1,6 +1,6 @@
 package com.keyfyndr.backend.features.auth.security
 
-import com.keyfyndr.backend.features.auth.service.JwtService
+import com.keyfyndr.backend.features.auth.domain.service.JwtService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
