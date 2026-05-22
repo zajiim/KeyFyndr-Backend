@@ -9,17 +9,23 @@ import com.fasterxml.jackson.annotation.JsonInclude
  * @param statusCode The HTTP status code
  * @param message A human-readable message describing the result
  * @param data The response payload (null for error responses or message-only responses)
+ * @param pagination Pagination metadata (null for non-paginated responses)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ApiResponse<T>(
     val success: Boolean,
     val statusCode: Int,
     val message: String,
-    val data: T? = null
+    val data: T? = null,
+    val pagination: PaginationMeta? = null
 ) {
     companion object {
         fun <T> success(statusCode: Int = 200, message: String, data: T? = null): ApiResponse<T> {
             return ApiResponse(success = true, statusCode = statusCode, message = message, data = data)
+        }
+
+        fun <T> success(statusCode: Int = 200, message: String, data: T? = null, pagination: PaginationMeta): ApiResponse<T> {
+            return ApiResponse(success = true, statusCode = statusCode, message = message, data = data, pagination = pagination)
         }
 
         fun <T> error(statusCode: Int, message: String, data: T? = null): ApiResponse<T> {

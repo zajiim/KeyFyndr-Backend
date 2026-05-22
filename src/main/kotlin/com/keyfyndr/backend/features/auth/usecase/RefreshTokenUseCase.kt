@@ -16,8 +16,17 @@ class RefreshTokenUseCase(
 ) {
 
     fun execute(request: RefreshTokenRequest): LoginResponse {
+        println("DEBUG: Looking up refresh token: ${request.refreshToken.take(20)}...${request.refreshToken.takeLast(20)}")
+        println("DEBUG: Token length: ${request.refreshToken.length}")
+
         val storedToken = refreshTokenRepository.findByToken(request.refreshToken)
-            ?: throw IllegalArgumentException("Invalid refresh token")
+
+        if (storedToken == null) {
+            println("DEBUG: Token NOT FOUND in database")
+            throw IllegalArgumentException("Invalid refresh token")
+        }
+
+        println("DEBUG: Token found! Expiry: ${storedToken.expiryDate}, Now: ${Instant.now()}")
 
         if (storedToken.expiryDate.isBefore(Instant.now())) {
             refreshTokenRepository.delete(storedToken)

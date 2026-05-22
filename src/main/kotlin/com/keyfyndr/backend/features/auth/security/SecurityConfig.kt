@@ -2,6 +2,9 @@ package com.keyfyndr.backend.features.auth.security
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -26,7 +29,26 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/auth/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/keys/public/**").permitAll()
                     .anyRequest().authenticated()
+            }
+            // Return proper JSON when authentication fails (expired/invalid/missing JWT)
+            .exceptionHandling { exceptions ->
+                exceptions
+                    .authenticationEntryPoint { _, response, _ ->
+                        response.status = HttpStatus.UNAUTHORIZED.value()
+                        response.contentType = MediaType.APPLICATION_JSON_VALUE
+                        response.writer.write(
+                            """{"success":false,"statusCode":401,"message":"Authentication required. Token is missing, expired, or invalid."}"""
+                        )
+                    }
+                    .accessDeniedHandler { _, response, _ ->
+                        response.status = HttpStatus.FORBIDDEN.value()
+                        response.contentType = MediaType.APPLICATION_JSON_VALUE
+                        response.writer.write(
+                            """{"success":false,"statusCode":403,"message":"Access denied. You do not have permission to access this resource."}"""
+                        )
+                    }
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .build()
@@ -38,3 +60,4 @@ class SecurityConfig(
     fun authenticationManager(config: AuthenticationConfiguration): AuthenticationManager =
         config.authenticationManager
 }
+
