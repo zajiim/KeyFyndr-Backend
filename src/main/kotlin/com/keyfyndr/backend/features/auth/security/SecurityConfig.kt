@@ -29,6 +29,7 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/auth/**").permitAll()
+                    .requestMatchers("/ws/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/keys/public/**").permitAll()
                     .anyRequest().authenticated()
             }
