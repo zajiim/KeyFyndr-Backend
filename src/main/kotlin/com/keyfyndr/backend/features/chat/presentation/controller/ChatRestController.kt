@@ -9,10 +9,12 @@ import com.keyfyndr.backend.features.chat.presentation.mapper.toResponse
 import com.keyfyndr.backend.features.chat.presentation.request.SendMessageRequest
 import com.keyfyndr.backend.features.chat.presentation.response.ChatMessageResponse
 import com.keyfyndr.backend.features.chat.presentation.response.ConversationResponse
-import jakarta.validation.Valid
-import org.springframework.http.HttpStatus
+import com.keyfyndr.backend.features.chat.presentation.websocket.ChatWebSocketHandler
+import com.keyfyndr.backend.features.chat.presentation.websocket.WebSocketSessionManager
+import com.keyfyndr.backend.features.chat.presentation.websocket.dto.NewMessagePayload
+import com.keyfyndr.backend.features.chat.presentation.websocket.dto.OutboundWebSocketMessage
+import com.keyfyndr.backend.features.chat.presentation.websocket.WebSocketMessageType
 import org.springframework.http.ResponseEntity
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
@@ -24,30 +26,30 @@ import java.util.UUID
  * - No business logic in the controller — all operations delegate to use cases
  * - JWT principal is extracted as UUID from the Authentication object
  * - All responses wrapped in ApiResponse for consistency
- * - The send endpoint persists the message AND delivers it via WebSocket
- *   to any connected recipients, providing both REST and real-time support
+ * - Message sending is handled via WebSocket (primary channel for real-time),
+ *   this controller provides REST endpoints for history retrieval and actions
+ * - Presence info (isOnline, lastSeen) is resolved from [WebSocketSessionManager]
  */
 @RestController
 @RequestMapping("/api/v1/chat")
 class ChatRestController(
-    private val sendMessageUseCase: SendMessageUseCase,
     private val getConversationMessagesUseCase: GetConversationMessagesUseCase,
     private val getUserConversationsUseCase: GetUserConversationsUseCase,
     private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,
-    private val messagingTemplate: SimpMessagingTemplate
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val sessionManager: WebSocketSessionManager,
+    private val chatWebSocketHandler: ChatWebSocketHandler
 ) {
 
     /**
      * POST /api/v1/chat/send
-     * Send a chat message via REST. The message is persisted and also
-     * delivered in real-time to connected WebSocket clients.
-     *
-     * This serves as a REST alternative to the WebSocket /app/chat.send endpoint,
-     * useful for testing and for clients not connected via WebSocket.
+     * Send a message to another user via HTTP.
+     * Persists the message and delivers it to the receiver over WebSocket if connected.
+     * Useful for REST clients (Postman, Android) alongside the WebSocket channel.
      */
     @PostMapping("/send")
     fun sendMessage(
-        @Valid @RequestBody request: SendMessageRequest,
+        @RequestBody request: SendMessageRequest,
         authentication: Authentication
     ): ResponseEntity<ApiResponse<ChatMessageResponse>> {
         val senderId = extractUserId(authentication)
@@ -58,25 +60,25 @@ class ChatRestController(
             content = request.content
         )
 
-        val response = savedMessage.toResponse()
-
-        // Also deliver via WebSocket to connected clients
-        messagingTemplate.convertAndSendToUser(
-            request.receiverId.toString(),
-            "/queue/messages",
-            response
+        // Deliver to receiver over WebSocket if they are currently connected
+        val outbound = OutboundWebSocketMessage(
+            type = WebSocketMessageType.NEW_MESSAGE,
+            data = NewMessagePayload(
+                id = savedMessage.id!!,
+                senderId = savedMessage.senderId,
+                receiverId = savedMessage.receiverId,
+                content = savedMessage.content,
+                isRead = savedMessage.isRead,
+                createdAt = savedMessage.createdAt
+            )
         )
-        messagingTemplate.convertAndSendToUser(
-            senderId.toString(),
-            "/queue/messages",
-            response
-        )
+        chatWebSocketHandler.sendToUser(savedMessage.receiverId, outbound)
+        chatWebSocketHandler.sendToUser(savedMessage.senderId, outbound)
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(
+        return ResponseEntity.ok(
             ApiResponse.success(
-                statusCode = HttpStatus.CREATED.value(),
                 message = "Message sent successfully",
-                data = response
+                data = savedMessage.toResponse()
             )
         )
     }
@@ -84,7 +86,8 @@ class ChatRestController(
     /**
      * GET /api/v1/chat/conversations
      * List all conversations for the authenticated user.
-     * Returns each conversation partner with last message preview and unread count.
+     * Returns each conversation partner with last message preview, unread count,
+     * online status, last seen, and read receipt status.
      */
     @GetMapping("/conversations")
     fun getConversations(
@@ -93,10 +96,18 @@ class ChatRestController(
         val userId = extractUserId(authentication)
         val conversations = getUserConversationsUseCase.execute(userId)
 
+        val response = conversations.map { conversation ->
+            val presence = sessionManager.getPresence(conversation.participantId)
+            conversation.toResponse(
+                isOnline = presence.isOnline,
+                lastSeen = presence.lastSeen
+            )
+        }
+
         return ResponseEntity.ok(
             ApiResponse.success(
                 message = "Conversations retrieved successfully",
-                data = conversations.map { it.toResponse() }
+                data = response
             )
         )
     }

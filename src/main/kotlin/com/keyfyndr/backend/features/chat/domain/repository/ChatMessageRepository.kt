@@ -21,6 +21,9 @@ interface ChatMessageRepository {
     /** Lists all conversations for a user with last message summary and unread count. */
     fun findUserConversations(userId: UUID): List<Conversation>
 
+    /** Finds all distinct user IDs that the given user has exchanged messages with. */
+    fun findConversationPartnerIds(userId: UUID): List<UUID>
+
     /** Marks all messages from [senderId] to [receiverId] as read. */
     fun markMessagesAsRead(receiverId: UUID, senderId: UUID)
 

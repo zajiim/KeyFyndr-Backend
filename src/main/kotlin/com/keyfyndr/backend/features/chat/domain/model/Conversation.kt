@@ -15,5 +15,6 @@ data class Conversation(
     val participantName: String,
     val lastMessage: String,
     val lastMessageAt: Instant,
-    val unreadCount: Int
+    val unreadCount: Int,
+    val isLastMessageRead: Boolean
 )

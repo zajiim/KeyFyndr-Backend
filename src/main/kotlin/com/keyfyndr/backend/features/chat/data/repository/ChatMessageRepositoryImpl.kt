@@ -67,14 +67,28 @@ class ChatMessageRepositoryImpl(
                 senderId = partnerId
             )
 
+            // Determine if the last message has been read:
+            // - If I sent it: check if receiver has read it (latestMessage.isRead)
+            // - If I received it: it's always "read" from my perspective (I see it)
+            val isLastMessageRead = if (latestMessage.senderId == userId) {
+                latestMessage.isRead
+            } else {
+                true
+            }
+
             Conversation(
                 participantId = partnerId,
                 participantName = partnerName,
                 lastMessage = latestMessage.content,
                 lastMessageAt = latestMessage.createdAt,
-                unreadCount = unreadCount
+                unreadCount = unreadCount,
+                isLastMessageRead = isLastMessageRead
             )
         }.sortedByDescending { it.lastMessageAt }
+    }
+
+    override fun findConversationPartnerIds(userId: UUID): List<UUID> {
+        return jpaChatMessageRepository.findConversationPartnerIds(userId)
     }
 
     @Transactional
@@ -86,3 +100,4 @@ class ChatMessageRepositoryImpl(
         return jpaChatMessageRepository.countTotalUnread(userId)
     }
 }
+

@@ -4,6 +4,7 @@ import com.keyfyndr.backend.features.chat.domain.model.ChatMessage
 import com.keyfyndr.backend.features.chat.domain.model.Conversation
 import com.keyfyndr.backend.features.chat.presentation.response.ChatMessageResponse
 import com.keyfyndr.backend.features.chat.presentation.response.ConversationResponse
+import java.time.Instant
 
 /**
  * Presentation-layer mappers: domain models → response DTOs.
@@ -22,11 +23,24 @@ fun ChatMessage.toResponse(): ChatMessageResponse = ChatMessageResponse(
     createdAt = this.createdAt
 )
 
-/** Maps [Conversation] domain model → [ConversationResponse] DTO. */
-fun Conversation.toResponse(): ConversationResponse = ConversationResponse(
+/**
+ * Maps [Conversation] domain model → [ConversationResponse] DTO.
+ *
+ * Presence info ([isOnline], [lastSeen]) is provided by the caller
+ * since it comes from the in-memory [WebSocketSessionManager],
+ * not from the domain model.
+ */
+fun Conversation.toResponse(
+    isOnline: Boolean,
+    lastSeen: Instant?
+): ConversationResponse = ConversationResponse(
     participantId = this.participantId,
     participantName = this.participantName,
     lastMessage = this.lastMessage,
     lastMessageAt = this.lastMessageAt,
-    unreadCount = this.unreadCount
+    unreadCount = this.unreadCount,
+    isOnline = isOnline,
+    lastSeen = lastSeen,
+    isLastMessageRead = this.isLastMessageRead
 )
+
