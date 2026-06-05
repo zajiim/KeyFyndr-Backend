@@ -21,5 +21,6 @@ data class InboundWebSocketMessage(
     val receiverId: UUID? = null,
     val senderId: UUID? = null,
     val content: String? = null,
-    val isTyping: Boolean? = null
+    val isTyping: Boolean? = null,
+    val replyToId: UUID? = null
 )

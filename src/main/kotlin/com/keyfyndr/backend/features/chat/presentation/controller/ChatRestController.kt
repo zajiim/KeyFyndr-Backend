@@ -57,7 +57,8 @@ class ChatRestController(
         val savedMessage = sendMessageUseCase.execute(
             senderId = senderId,
             receiverId = request.receiverId,
-            content = request.content
+            content = request.content,
+            replyToId = request.replyToId
         )
 
         // Deliver to receiver over WebSocket if they are currently connected
@@ -69,6 +70,9 @@ class ChatRestController(
                 receiverId = savedMessage.receiverId,
                 content = savedMessage.content,
                 isRead = savedMessage.isRead,
+                replyToId = savedMessage.replyToId,
+                replyToContent = savedMessage.replyToContent,
+                replyToSenderId = savedMessage.replyToSenderId,
                 createdAt = savedMessage.createdAt
             )
         )

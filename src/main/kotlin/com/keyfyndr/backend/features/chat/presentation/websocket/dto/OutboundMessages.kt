@@ -26,6 +26,9 @@ data class NewMessagePayload(
     val receiverId: UUID,
     val content: String,
     val isRead: Boolean,
+    val replyToId: UUID? = null,
+    val replyToContent: String? = null,
+    val replyToSenderId: UUID? = null,
     val createdAt: Instant
 )
 

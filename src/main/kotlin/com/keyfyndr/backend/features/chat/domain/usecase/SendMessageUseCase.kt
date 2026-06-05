@@ -21,17 +21,29 @@ class SendMessageUseCase(
     private val userRepository: UserRepository
 ) {
 
-    fun execute(senderId: UUID, receiverId: UUID, content: String): ChatMessage {
+    fun execute(senderId: UUID, receiverId: UUID, content: String, replyToId: UUID? = null): ChatMessage {
         require(senderId != receiverId) { "Cannot send a message to yourself" }
         require(content.isNotBlank()) { "Message content cannot be blank" }
 
         userRepository.findById(receiverId)
             ?: throw ResourceNotFoundException("Receiver not found")
 
+        var replyContent: String? = null
+        var replySenderId: UUID? = null
+
+        if (replyToId != null) {
+            val repliedMessage = chatMessageRepository.findById(replyToId)
+            replyContent = repliedMessage?.content
+            replySenderId = repliedMessage?.senderId
+        }
+
         val message = ChatMessage(
             senderId = senderId,
             receiverId = receiverId,
-            content = content.trim()
+            content = content.trim(),
+            replyToId = replyToId,
+            replyToContent = replyContent,
+            replyToSenderId = replySenderId
         )
 
         return chatMessageRepository.save(message)

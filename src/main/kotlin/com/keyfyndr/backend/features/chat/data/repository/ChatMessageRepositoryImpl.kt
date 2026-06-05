@@ -33,6 +33,10 @@ class ChatMessageRepositoryImpl(
         return savedEntity.toDomain()
     }
 
+    override fun findById(id: UUID): ChatMessage? {
+        return jpaChatMessageRepository.findById(id).orElse(null)?.toDomain()
+    }
+
     override fun findConversationMessages(
         userId1: UUID,
         userId2: UUID,

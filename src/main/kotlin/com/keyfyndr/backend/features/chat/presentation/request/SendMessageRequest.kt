@@ -14,5 +14,7 @@ data class SendMessageRequest(
     val receiverId: UUID,
 
     @field:NotBlank(message = "Message content cannot be blank")
-    val content: String
+    val content: String,
+
+    val replyToId: UUID? = null
 )

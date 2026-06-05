@@ -95,7 +95,8 @@ class ChatWebSocketHandler(
         val savedMessage = sendMessageUseCase.execute(
             senderId = senderId,
             receiverId = receiverId,
-            content = content
+            content = content,
+            replyToId = message.replyToId
         )
 
         val payload = NewMessagePayload(
@@ -104,6 +105,9 @@ class ChatWebSocketHandler(
             receiverId = savedMessage.receiverId,
             content = savedMessage.content,
             isRead = savedMessage.isRead,
+            replyToId = savedMessage.replyToId,
+            replyToContent = savedMessage.replyToContent,
+            replyToSenderId = savedMessage.replyToSenderId,
             createdAt = savedMessage.createdAt
         )
 

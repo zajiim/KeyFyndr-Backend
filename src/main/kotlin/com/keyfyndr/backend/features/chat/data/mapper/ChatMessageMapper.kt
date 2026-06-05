@@ -19,6 +19,9 @@ fun ChatMessageEntity.toDomain(): ChatMessage = ChatMessage(
     receiverId = this.receiverId,
     content = this.content,
     isRead = this.isRead,
+    replyToId = this.replyToId,
+    replyToContent = this.replyToContent,
+    replyToSenderId = this.replyToSenderId,
     createdAt = this.createdAt
 )
 
@@ -29,5 +32,8 @@ fun ChatMessage.toEntity(): ChatMessageEntity = ChatMessageEntity(
     receiverId = this.receiverId,
     content = this.content,
     isRead = this.isRead,
+    replyToId = this.replyToId,
+    replyToContent = this.replyToContent,
+    replyToSenderId = this.replyToSenderId,
     createdAt = this.createdAt
 )

@@ -15,5 +15,8 @@ data class ChatMessage(
     val receiverId: UUID,
     val content: String,
     val isRead: Boolean = false,
+    val replyToId: UUID? = null,
+    val replyToContent: String? = null,
+    val replyToSenderId: UUID? = null,
     val createdAt: Instant = Instant.now()
 )

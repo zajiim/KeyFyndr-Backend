@@ -36,6 +36,15 @@ class ChatMessageEntity(
     @Column(name = "is_read", nullable = false)
     var isRead: Boolean = false,
 
+    @Column(name = "reply_to_id")
+    val replyToId: UUID? = null,
+
+    @Column(name = "reply_to_content", columnDefinition = "TEXT")
+    val replyToContent: String? = null,
+
+    @Column(name = "reply_to_sender_id")
+    val replyToSenderId: UUID? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now()
 )

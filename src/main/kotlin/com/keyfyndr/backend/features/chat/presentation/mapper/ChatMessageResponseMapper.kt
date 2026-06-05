@@ -20,6 +20,9 @@ fun ChatMessage.toResponse(): ChatMessageResponse = ChatMessageResponse(
     receiverId = this.receiverId,
     content = this.content,
     isRead = this.isRead,
+    replyToId = this.replyToId,
+    replyToContent = this.replyToContent,
+    replyToSenderId = this.replyToSenderId,
     createdAt = this.createdAt
 )
 

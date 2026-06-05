@@ -14,6 +14,8 @@ import java.util.UUID
 interface ChatMessageRepository {
 
     fun save(message: ChatMessage): ChatMessage
+    
+    fun findById(id: UUID): ChatMessage?
 
     /** Fetches paginated messages between two users, ordered by createdAt DESC. */
     fun findConversationMessages(userId1: UUID, userId2: UUID, page: Int, size: Int): PageResult<ChatMessage>
