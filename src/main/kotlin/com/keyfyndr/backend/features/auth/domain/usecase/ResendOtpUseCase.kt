@@ -23,6 +23,6 @@ class ResendOtpUseCase(
         // TODO: Send OTP via email/SMS service
         println("Resent OTP for ${request.email}: $otp") // Remove in production
 
-        return "OTP has been resent to ${request.email}"
+        return "OTP has been sent to ${request.email}"
     }
 }
