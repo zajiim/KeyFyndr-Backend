@@ -1,5 +1,7 @@
 package com.keyfyndr.backend.features.chat.presentation.websocket
 
+import com.keyfyndr.backend.common.notification.service.FcmNotificationService
+import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
 import com.keyfyndr.backend.features.auth.security.WebSocketAuthHandshakeInterceptor
 import com.keyfyndr.backend.features.chat.domain.repository.ChatMessageRepository
 import com.keyfyndr.backend.features.chat.domain.usecase.MarkMessagesAsReadUseCase
@@ -35,6 +37,8 @@ class ChatWebSocketHandler(
     private val sendMessageUseCase: SendMessageUseCase,
     private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,
     private val chatMessageRepository: ChatMessageRepository,
+    private val fcmNotificationService: FcmNotificationService,
+    private val userRepository: UserRepository,
     private val objectMapper: ObjectMapper
 ) : TextWebSocketHandler() {
 
@@ -119,6 +123,27 @@ class ChatWebSocketHandler(
         // Deliver to both sender (confirmation) and receiver (delivery)
         sendToUser(senderId, outbound)
         sendToUser(receiverId, outbound)
+
+        // ── FCM Push Notification fallback ──────────────────────────────
+        // Only send a push if the receiver has NO active WebSocket session.
+        // When they are online via WS the message is already delivered above.
+        // The FCM payload is data-only so the Android client can suppress the
+        // banner if the correct conversation screen is currently open.
+        val receiverSession = sessionManager.getSession(receiverId)
+        if (receiverSession == null || !receiverSession.isOpen) {
+            val senderName = userRepository.findById(senderId)?.name ?: "Someone"
+            fcmNotificationService.sendChatMessageNotification(
+                receiverId = receiverId,
+                title = senderName,
+                body = content,
+                data = mapOf(
+                    "type" to "chat_message",
+                    "messageId" to savedMessage.id.toString(),
+                    "senderId" to senderId.toString(),
+                    "conversationId" to senderId.toString()
+                )
+            )
+        }
 
         // Send conversation update to receiver for their chats list
         sendConversationUpdate(receiverId, senderId)

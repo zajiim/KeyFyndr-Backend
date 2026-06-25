@@ -1,6 +1,8 @@
 package com.keyfyndr.backend.features.chat.presentation.controller
 
+import com.keyfyndr.backend.common.notification.service.FcmNotificationService
 import com.keyfyndr.backend.common.response.ApiResponse
+import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
 import com.keyfyndr.backend.features.chat.domain.usecase.GetConversationMessagesUseCase
 import com.keyfyndr.backend.features.chat.domain.usecase.GetUserConversationsUseCase
 import com.keyfyndr.backend.features.chat.domain.usecase.MarkMessagesAsReadUseCase
@@ -10,10 +12,10 @@ import com.keyfyndr.backend.features.chat.presentation.request.SendMessageReques
 import com.keyfyndr.backend.features.chat.presentation.response.ChatMessageResponse
 import com.keyfyndr.backend.features.chat.presentation.response.ConversationResponse
 import com.keyfyndr.backend.features.chat.presentation.websocket.ChatWebSocketHandler
+import com.keyfyndr.backend.features.chat.presentation.websocket.WebSocketMessageType
 import com.keyfyndr.backend.features.chat.presentation.websocket.WebSocketSessionManager
 import com.keyfyndr.backend.features.chat.presentation.websocket.dto.NewMessagePayload
 import com.keyfyndr.backend.features.chat.presentation.websocket.dto.OutboundWebSocketMessage
-import com.keyfyndr.backend.features.chat.presentation.websocket.WebSocketMessageType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
@@ -38,7 +40,9 @@ class ChatRestController(
     private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
     private val sessionManager: WebSocketSessionManager,
-    private val chatWebSocketHandler: ChatWebSocketHandler
+    private val chatWebSocketHandler: ChatWebSocketHandler,
+    private val fcmNotificationService: FcmNotificationService,
+    private val userRepository: UserRepository
 ) {
 
     /**
@@ -78,6 +82,23 @@ class ChatRestController(
         )
         chatWebSocketHandler.sendToUser(savedMessage.receiverId, outbound)
         chatWebSocketHandler.sendToUser(savedMessage.senderId, outbound)
+
+        // ── FCM Push Notification fallback ──────────────────────────────
+        val receiverSession = sessionManager.getSession(savedMessage.receiverId)
+        if (receiverSession == null || !receiverSession.isOpen) {
+            val senderName = userRepository.findById(senderId)?.name ?: "Someone"
+            fcmNotificationService.sendChatMessageNotification(
+                receiverId = savedMessage.receiverId,
+                title = senderName,
+                body = request.content,
+                data = mapOf(
+                    "type" to "chat_message",
+                    "messageId" to savedMessage.id.toString(),
+                    "senderId" to senderId.toString(),
+                    "conversationId" to senderId.toString()
+                )
+            )
+        }
 
         return ResponseEntity.ok(
             ApiResponse.success(
