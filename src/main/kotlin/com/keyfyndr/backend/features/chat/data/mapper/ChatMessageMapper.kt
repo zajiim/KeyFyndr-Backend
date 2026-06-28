@@ -22,7 +22,9 @@ fun ChatMessageEntity.toDomain(): ChatMessage = ChatMessage(
     replyToId = this.replyToId,
     replyToContent = this.replyToContent,
     replyToSenderId = this.replyToSenderId,
-    createdAt = this.createdAt
+    createdAt = this.createdAt,
+    deliveredAt = this.deliveredAt,
+    readAt = this.readAt
 )
 
 /** Maps [ChatMessage] domain model → [ChatMessageEntity]. */
@@ -35,5 +37,8 @@ fun ChatMessage.toEntity(): ChatMessageEntity = ChatMessageEntity(
     replyToId = this.replyToId,
     replyToContent = this.replyToContent,
     replyToSenderId = this.replyToSenderId,
-    createdAt = this.createdAt
+    createdAt = this.createdAt,
+    deliveredAt = this.deliveredAt,
+    readAt = this.readAt
 )
+

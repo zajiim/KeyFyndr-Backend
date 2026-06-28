@@ -77,7 +77,9 @@ class ChatRestController(
                 replyToId = savedMessage.replyToId,
                 replyToContent = savedMessage.replyToContent,
                 replyToSenderId = savedMessage.replyToSenderId,
-                createdAt = savedMessage.createdAt
+                createdAt = savedMessage.createdAt,
+                deliveredAt = savedMessage.deliveredAt,
+                readAt = savedMessage.readAt
             )
         )
         chatWebSocketHandler.sendToUser(savedMessage.receiverId, outbound)

@@ -16,5 +16,10 @@ data class Conversation(
     val lastMessage: String,
     val lastMessageAt: Instant,
     val unreadCount: Int,
-    val isLastMessageRead: Boolean
+    val isLastMessageRead: Boolean,
+    /** deliveredAt of the last message — null means still in SENT state. */
+    val lastMessageDeliveredAt: Instant? = null,
+    /** readAt of the last message — null means not yet read. */
+    val lastMessageReadAt: Instant? = null
 )
+

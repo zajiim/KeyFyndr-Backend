@@ -14,6 +14,7 @@ import java.util.UUID
  * { "type": "SEND_MESSAGE", "receiverId": "uuid", "content": "hello" }
  * { "type": "TYPING", "receiverId": "uuid", "isTyping": true }
  * { "type": "MARK_READ", "senderId": "uuid" }
+ * { "type": "MARK_DELIVERED", "messageIds": ["uuid1", "uuid2"] }
  * ```
  */
 data class InboundWebSocketMessage(
@@ -22,5 +23,8 @@ data class InboundWebSocketMessage(
     val senderId: UUID? = null,
     val content: String? = null,
     val isTyping: Boolean? = null,
-    val replyToId: UUID? = null
+    val replyToId: UUID? = null,
+    /** Used by MARK_DELIVERED to acknowledge a batch of messages. */
+    val messageIds: List<UUID>? = null
 )
+

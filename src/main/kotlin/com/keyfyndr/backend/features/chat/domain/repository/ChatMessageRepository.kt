@@ -14,7 +14,7 @@ import java.util.UUID
 interface ChatMessageRepository {
 
     fun save(message: ChatMessage): ChatMessage
-    
+
     fun findById(id: UUID): ChatMessage?
 
     /** Fetches paginated messages between two users, ordered by createdAt DESC. */
@@ -26,9 +26,30 @@ interface ChatMessageRepository {
     /** Finds all distinct user IDs that the given user has exchanged messages with. */
     fun findConversationPartnerIds(userId: UUID): List<UUID>
 
-    /** Marks all messages from [senderId] to [receiverId] as read. */
-    fun markMessagesAsRead(receiverId: UUID, senderId: UUID)
+    /**
+     * Marks all unread messages from [senderId] to [receiverId] as read.
+     *
+     * Also sets deliveredAt on messages that were never acknowledged as delivered,
+     * so delivery state is always consistent before read state.
+     *
+     * @return The UUIDs of messages that were actually updated (empty if none changed).
+     */
+    fun markMessagesAsRead(receiverId: UUID, senderId: UUID): List<UUID>
+
+    /**
+     * Batch-marks a set of messages as delivered for [receiverId].
+     *
+     * Only messages that:
+     *  - are addressed to [receiverId]
+     *  - have not yet been delivered (deliveredAt == null)
+     * are updated. Invalid/already-delivered IDs are silently skipped (idempotent).
+     *
+     * @return Map of senderId → list of message IDs that were actually updated.
+     *         Empty map when nothing changed.
+     */
+    fun markMessagesAsDelivered(receiverId: UUID, messageIds: List<UUID>): Map<UUID, List<UUID>>
 
     /** Counts total unread messages for a user across all conversations. */
     fun countUnreadMessages(userId: UUID): Int
 }
+

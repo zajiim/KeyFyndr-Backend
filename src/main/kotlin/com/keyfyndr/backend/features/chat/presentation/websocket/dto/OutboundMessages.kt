@@ -19,6 +19,7 @@ data class OutboundWebSocketMessage(
 /**
  * Payload for [WebSocketMessageType.NEW_MESSAGE].
  * Sent to both sender (as confirmation) and receiver (as delivery).
+ * Includes delivery timestamps so the client can immediately reflect state.
  */
 data class NewMessagePayload(
     val id: UUID,
@@ -29,7 +30,11 @@ data class NewMessagePayload(
     val replyToId: UUID? = null,
     val replyToContent: String? = null,
     val replyToSenderId: UUID? = null,
-    val createdAt: Instant
+    val createdAt: Instant,
+    /** Null on initial delivery — set after MARK_DELIVERED acknowledgement. */
+    val deliveredAt: Instant? = null,
+    /** Null on initial delivery — set after MARK_READ acknowledgement. */
+    val readAt: Instant? = null
 )
 
 /**
@@ -55,12 +60,24 @@ data class PresenceUpdatePayload(
 )
 
 /**
+ * Payload for [WebSocketMessageType.DELIVERY_RECEIPT].
+ * Sent to the original sender when the receiver's device acknowledges delivery.
+ * The sender uses this to upgrade the tick state from ✓ to ✓✓.
+ */
+data class DeliveryReceiptPayload(
+    val messageIds: List<UUID>
+)
+
+/**
  * Payload for [WebSocketMessageType.READ_RECEIPT].
  * Sent to the original sender when the receiver marks messages as read.
+ * Includes the specific message IDs that were updated so the sender can
+ * reflect the correct read state per message.
  */
 data class ReadReceiptPayload(
     val readerId: UUID,
-    val senderId: UUID
+    val senderId: UUID,
+    val messageIds: List<UUID>
 )
 
 /**
@@ -75,7 +92,11 @@ data class ConversationUpdatePayload(
     val unreadCount: Int,
     val isOnline: Boolean,
     val lastSeen: Instant?,
-    val isLastMessageRead: Boolean
+    val isLastMessageRead: Boolean,
+    /** deliveredAt of the last message in this conversation. */
+    val lastMessageDeliveredAt: Instant? = null,
+    /** readAt of the last message in this conversation. */
+    val lastMessageReadAt: Instant? = null
 )
 
 /**
@@ -85,3 +106,4 @@ data class ConversationUpdatePayload(
 data class ErrorPayload(
     val message: String
 )
+

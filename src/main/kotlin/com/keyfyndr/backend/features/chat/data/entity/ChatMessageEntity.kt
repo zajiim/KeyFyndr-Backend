@@ -15,6 +15,11 @@ import java.util.UUID
  * rather than using @ManyToOne to UserEntity. This keeps the chat feature
  * decoupled from the auth feature's entity internals, consistent with how
  * KeyEntity handles owner_id.
+ *
+ * Delivery lifecycle (via nullable timestamps):
+ *   SENT      → deliveredAt == null
+ *   DELIVERED → deliveredAt != null && readAt == null
+ *   READ      → readAt != null
  */
 @Entity
 @Table(name = "chat_messages")
@@ -46,5 +51,14 @@ class ChatMessageEntity(
     val replyToSenderId: UUID? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+
+    /** Set when the receiver's device acknowledges delivery. */
+    @Column(name = "delivered_at")
+    var deliveredAt: Instant? = null,
+
+    /** Set when the receiver opens and reads the conversation. */
+    @Column(name = "read_at")
+    var readAt: Instant? = null
 )
+

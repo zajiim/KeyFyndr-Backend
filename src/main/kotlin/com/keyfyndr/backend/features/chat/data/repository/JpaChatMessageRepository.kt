@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -91,18 +92,35 @@ interface JpaChatMessageRepository : JpaRepository<ChatMessageEntity, UUID> {
     fun countTotalUnread(@Param("userId") userId: UUID): Int
 
     /**
-     * Marks all messages from a specific sender to a receiver as read.
+     * Fetches all unread messages from a specific sender to a receiver.
+     * Used by markMessagesAsRead to get the entity list for batch saving.
      */
-    @Modifying
     @Query(
         """
-        UPDATE ChatMessageEntity m
-        SET m.isRead = true
+        SELECT m FROM ChatMessageEntity m
         WHERE m.receiverId = :receiverId AND m.senderId = :senderId AND m.isRead = false
         """
     )
-    fun markAsRead(
+    fun findUnreadMessagesFromSender(
         @Param("receiverId") receiverId: UUID,
         @Param("senderId") senderId: UUID
+    ): List<ChatMessageEntity>
+
+    /**
+     * Fetches messages by ID list that belong to [receiverId] and have not yet been delivered.
+     * Used by markMessagesAsDelivered to find the subset actually needing an update.
+     */
+    @Query(
+        """
+        SELECT m FROM ChatMessageEntity m
+        WHERE m.id IN :messageIds
+          AND m.receiverId = :receiverId
+          AND m.deliveredAt IS NULL
+        """
     )
+    fun findUndeliveredByIds(
+        @Param("receiverId") receiverId: UUID,
+        @Param("messageIds") messageIds: List<UUID>
+    ): List<ChatMessageEntity>
 }
+

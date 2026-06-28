@@ -4,6 +4,7 @@ import com.keyfyndr.backend.common.notification.service.FcmNotificationService
 import com.keyfyndr.backend.features.auth.domain.repository.UserRepository
 import com.keyfyndr.backend.features.auth.security.WebSocketAuthHandshakeInterceptor
 import com.keyfyndr.backend.features.chat.domain.repository.ChatMessageRepository
+import com.keyfyndr.backend.features.chat.domain.usecase.MarkMessagesAsDeliveredUseCase
 import com.keyfyndr.backend.features.chat.domain.usecase.MarkMessagesAsReadUseCase
 import com.keyfyndr.backend.features.chat.domain.usecase.SendMessageUseCase
 import com.keyfyndr.backend.features.chat.presentation.websocket.dto.*
@@ -27,6 +28,14 @@ import java.util.UUID
  * - Message routing: parse inbound JSON, delegate to the appropriate handler
  * - Real-time delivery: send outbound messages to connected users
  *
+ * Message delivery lifecycle:
+ *   1. Sender calls SEND_MESSAGE → message persisted (SENT)
+ *   2. If receiver is online:  push NEW_MESSAGE; if offline: send FCM
+ *   3. Receiver's device calls MARK_DELIVERED → status = DELIVERED
+ *      → DELIVERY_RECEIPT sent to original sender
+ *   4. Receiver calls MARK_READ → status = READ
+ *      → READ_RECEIPT sent to original sender
+ *
  * Client flow:
  * 1. Connect to ws://host/ws?token=<JWT>
  * 2. Send/receive JSON messages with "type" field for routing
@@ -36,6 +45,7 @@ class ChatWebSocketHandler(
     private val sessionManager: WebSocketSessionManager,
     private val sendMessageUseCase: SendMessageUseCase,
     private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,
+    private val markMessagesAsDeliveredUseCase: MarkMessagesAsDeliveredUseCase,
     private val chatMessageRepository: ChatMessageRepository,
     private val fcmNotificationService: FcmNotificationService,
     private val userRepository: UserRepository,
@@ -73,9 +83,10 @@ class ChatWebSocketHandler(
 
         try {
             when (inbound.type.uppercase()) {
-                WebSocketMessageType.SEND_MESSAGE.name -> handleSendMessage(userId, inbound)
-                WebSocketMessageType.TYPING.name -> handleTyping(userId, inbound)
-                WebSocketMessageType.MARK_READ.name -> handleMarkRead(userId, inbound)
+                WebSocketMessageType.SEND_MESSAGE.name    -> handleSendMessage(userId, inbound)
+                WebSocketMessageType.TYPING.name          -> handleTyping(userId, inbound)
+                WebSocketMessageType.MARK_READ.name       -> handleMarkRead(userId, inbound)
+                WebSocketMessageType.MARK_DELIVERED.name  -> handleMarkDelivered(userId, inbound)
                 else -> sendError(session, "Unknown message type: ${inbound.type}")
             }
         } catch (e: Exception) {
@@ -89,6 +100,7 @@ class ChatWebSocketHandler(
     /**
      * Handles SEND_MESSAGE: persists the message and delivers to both parties.
      * Also sends a CONVERSATION_UPDATE to the receiver for their chat list.
+     * FCM is only sent when the receiver has NO active WebSocket session.
      */
     private fun handleSendMessage(senderId: UUID, message: InboundWebSocketMessage) {
         val receiverId = message.receiverId
@@ -112,7 +124,9 @@ class ChatWebSocketHandler(
             replyToId = savedMessage.replyToId,
             replyToContent = savedMessage.replyToContent,
             replyToSenderId = savedMessage.replyToSenderId,
-            createdAt = savedMessage.createdAt
+            createdAt = savedMessage.createdAt,
+            deliveredAt = savedMessage.deliveredAt,
+            readAt = savedMessage.readAt
         )
 
         val outbound = OutboundWebSocketMessage(
@@ -127,8 +141,6 @@ class ChatWebSocketHandler(
         // ── FCM Push Notification fallback ──────────────────────────────
         // Only send a push if the receiver has NO active WebSocket session.
         // When they are online via WS the message is already delivered above.
-        // The FCM payload is data-only so the Android client can suppress the
-        // banner if the correct conversation screen is currently open.
         val receiverSession = sessionManager.getSession(receiverId)
         if (receiverSession == null || !receiverSession.isOpen) {
             val senderName = userRepository.findById(senderId)?.name ?: "Someone"
@@ -169,19 +181,61 @@ class ChatWebSocketHandler(
     }
 
     /**
+     * Handles MARK_DELIVERED: batch-marks the provided message IDs as delivered.
+     *
+     * The receiver (caller) sends a list of message IDs. For each sender whose
+     * messages were actually updated, one DELIVERY_RECEIPT event is dispatched
+     * containing only those message IDs. This avoids duplicate events when the
+     * client retries the same acknowledgement.
+     */
+    private fun handleMarkDelivered(receiverId: UUID, message: InboundWebSocketMessage) {
+        val messageIds = message.messageIds
+        if (messageIds.isNullOrEmpty()) {
+            throw IllegalArgumentException("messageIds is required and must not be empty")
+        }
+
+        // Returns map of senderId → list of actually-updated IDs.
+        // Already-delivered messages are silently skipped (idempotent).
+        val updatedBySender: Map<UUID, List<UUID>> =
+            markMessagesAsDeliveredUseCase.execute(receiverId, messageIds)
+
+        if (updatedBySender.isEmpty()) {
+            // All messages were already delivered — nothing to notify
+            return
+        }
+
+        // Notify each original sender with only the IDs belonging to them
+        updatedBySender.forEach { (senderId, updatedIds) ->
+            val outbound = OutboundWebSocketMessage(
+                type = WebSocketMessageType.DELIVERY_RECEIPT,
+                data = DeliveryReceiptPayload(messageIds = updatedIds)
+            )
+            sendToUser(senderId, outbound)
+        }
+    }
+
+    /**
      * Handles MARK_READ: marks messages as read and notifies the original sender.
+     *
+     * Only messages that were not yet read are updated. If nothing changed
+     * (all already read), no READ_RECEIPT event is emitted (idempotent).
+     * deliveredAt is backfilled if it was never set, keeping lifecycle consistent.
      */
     private fun handleMarkRead(readerId: UUID, message: InboundWebSocketMessage) {
         val senderId = message.senderId
             ?: throw IllegalArgumentException("senderId is required")
 
-        markMessagesAsReadUseCase.execute(readerId, senderId)
+        val updatedIds: List<UUID> = markMessagesAsReadUseCase.execute(readerId, senderId)
+
+        // Do not emit READ_RECEIPT if nothing actually changed
+        if (updatedIds.isEmpty()) return
 
         val outbound = OutboundWebSocketMessage(
             type = WebSocketMessageType.READ_RECEIPT,
             data = ReadReceiptPayload(
                 readerId = readerId,
-                senderId = senderId
+                senderId = senderId,
+                messageIds = updatedIds
             )
         )
 
@@ -246,7 +300,7 @@ class ChatWebSocketHandler(
     /**
      * Sends a conversation update to a user (e.g., when they receive a new message
      * while on the chats list page). Includes the latest message, unread count,
-     * and presence info.
+     * presence info, and delivery timestamps.
      */
     private fun sendConversationUpdate(userId: UUID, otherUserId: UUID) {
         val conversations = chatMessageRepository.findUserConversations(userId)
@@ -265,7 +319,9 @@ class ChatWebSocketHandler(
                 unreadCount = conversation.unreadCount,
                 isOnline = presence.isOnline,
                 lastSeen = presence.lastSeen,
-                isLastMessageRead = conversation.isLastMessageRead
+                isLastMessageRead = conversation.isLastMessageRead,
+                lastMessageDeliveredAt = conversation.lastMessageDeliveredAt,
+                lastMessageReadAt = conversation.lastMessageReadAt
             )
         )
 
@@ -289,3 +345,4 @@ class ChatWebSocketHandler(
         return userId
     }
 }
+

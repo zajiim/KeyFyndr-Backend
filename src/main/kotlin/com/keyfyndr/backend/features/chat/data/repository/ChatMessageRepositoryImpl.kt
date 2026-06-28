@@ -10,6 +10,7 @@ import com.keyfyndr.backend.features.chat.domain.repository.ChatMessageRepositor
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -86,7 +87,9 @@ class ChatMessageRepositoryImpl(
                 lastMessage = latestMessage.content,
                 lastMessageAt = latestMessage.createdAt,
                 unreadCount = unreadCount,
-                isLastMessageRead = isLastMessageRead
+                isLastMessageRead = isLastMessageRead,
+                lastMessageDeliveredAt = latestMessage.deliveredAt,
+                lastMessageReadAt = latestMessage.readAt
             )
         }.sortedByDescending { it.lastMessageAt }
     }
@@ -95,13 +98,72 @@ class ChatMessageRepositoryImpl(
         return jpaChatMessageRepository.findConversationPartnerIds(userId)
     }
 
+    /**
+     * Marks all unread messages from [senderId] to [receiverId] as read.
+     *
+     * Also backfills deliveredAt when it is missing, keeping delivery state consistent.
+     * Uses saveAll for a single batch flush rather than one UPDATE per message.
+     *
+     * @return UUIDs of messages that were actually changed.
+     */
     @Transactional
-    override fun markMessagesAsRead(receiverId: UUID, senderId: UUID) {
-        jpaChatMessageRepository.markAsRead(receiverId, senderId)
+    override fun markMessagesAsRead(receiverId: UUID, senderId: UUID): List<UUID> {
+        val unreadEntities = jpaChatMessageRepository.findUnreadMessagesFromSender(
+            receiverId = receiverId,
+            senderId = senderId
+        )
+        if (unreadEntities.isEmpty()) return emptyList()
+
+        val now = Instant.now()
+        unreadEntities.forEach { entity ->
+            entity.isRead = true
+            entity.readAt = now
+            // Guard: ensure deliveredAt is always set before readAt
+            if (entity.deliveredAt == null) {
+                entity.deliveredAt = now
+            }
+        }
+
+        jpaChatMessageRepository.saveAll(unreadEntities)
+        return unreadEntities.mapNotNull { it.id }
+    }
+
+    /**
+     * Batch-marks a set of messages as delivered for [receiverId].
+     *
+     * Only messages addressed to [receiverId] that have not yet been delivered
+     * (deliveredAt == null) are updated. Already-delivered and foreign messages
+     * are silently ignored (idempotent).
+     *
+     * Uses saveAll for a single batch flush.
+     *
+     * @return Map of senderId → list of message IDs that were actually updated.
+     */
+    @Transactional
+    override fun markMessagesAsDelivered(
+        receiverId: UUID,
+        messageIds: List<UUID>
+    ): Map<UUID, List<UUID>> {
+        val entitiesToUpdate = jpaChatMessageRepository.findUndeliveredByIds(
+            receiverId = receiverId,
+            messageIds = messageIds
+        )
+        if (entitiesToUpdate.isEmpty()) return emptyMap()
+
+        val now = Instant.now()
+        entitiesToUpdate.forEach { entity ->
+            entity.deliveredAt = now
+        }
+
+        jpaChatMessageRepository.saveAll(entitiesToUpdate)
+
+        // Group updated message IDs by their original sender for targeted notification
+        return entitiesToUpdate
+            .groupBy { it.senderId }
+            .mapValues { (_, entities) -> entities.mapNotNull { it.id } }
     }
 
     override fun countUnreadMessages(userId: UUID): Int {
         return jpaChatMessageRepository.countTotalUnread(userId)
     }
 }
-

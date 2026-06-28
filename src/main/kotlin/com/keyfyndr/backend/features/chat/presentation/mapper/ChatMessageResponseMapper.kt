@@ -23,7 +23,9 @@ fun ChatMessage.toResponse(): ChatMessageResponse = ChatMessageResponse(
     replyToId = this.replyToId,
     replyToContent = this.replyToContent,
     replyToSenderId = this.replyToSenderId,
-    createdAt = this.createdAt
+    createdAt = this.createdAt,
+    deliveredAt = this.deliveredAt,
+    readAt = this.readAt
 )
 
 /**
@@ -44,6 +46,7 @@ fun Conversation.toResponse(
     unreadCount = this.unreadCount,
     isOnline = isOnline,
     lastSeen = lastSeen,
-    isLastMessageRead = this.isLastMessageRead
+    isLastMessageRead = this.isLastMessageRead,
+    lastMessageDeliveredAt = this.lastMessageDeliveredAt,
+    lastMessageReadAt = this.lastMessageReadAt
 )
-
