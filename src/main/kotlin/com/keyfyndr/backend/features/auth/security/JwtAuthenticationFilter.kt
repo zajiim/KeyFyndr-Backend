@@ -26,7 +26,7 @@ class JwtAuthenticationFilter(
             val userId = jwtService.getUserIdFromToken(token)
 
             val authentication = UsernamePasswordAuthenticationToken(
-                userId,    // principal
+                userId.toString(),    // principal (stored as String so controllers can cast with `as String`)
                 null,      // credentials
                 emptyList() // authorities
             )
