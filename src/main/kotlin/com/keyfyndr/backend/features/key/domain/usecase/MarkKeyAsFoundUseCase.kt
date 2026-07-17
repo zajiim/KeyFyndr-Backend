@@ -7,6 +7,7 @@ import com.keyfyndr.backend.features.key.domain.enums.KeyStatus
 import com.keyfyndr.backend.features.key.domain.model.Key
 import com.keyfyndr.backend.features.key.domain.repository.KeyRepository
 import org.springframework.stereotype.Component
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -16,13 +17,16 @@ import java.util.UUID
  * - Only the key owner can mark it as found
  * - Only keys with status LOST can transition to FOUND
  * - Inactive (soft-deleted) keys cannot be modified
+ *
+ * When latitude/longitude are provided, they are stored on the key
+ * to power nearby-key queries on the Home Dashboard.
  */
 @Component
 class MarkKeyAsFoundUseCase(
     private val keyRepository: KeyRepository
 ) {
 
-    fun execute(keyId: UUID, ownerId: UUID): Key {
+    fun execute(keyId: UUID, ownerId: UUID, latitude: Double? = null, longitude: Double? = null): Key {
         val key = keyRepository.findById(keyId)
             ?: throw ResourceNotFoundException("Key not found with ID: $keyId")
 
@@ -41,7 +45,12 @@ class MarkKeyAsFoundUseCase(
             )
         }
 
-        val updatedKey = key.copy(status = KeyStatus.FOUND)
+        val updatedKey = key.copy(
+            status = KeyStatus.FOUND,
+            latitude = latitude,
+            longitude = longitude,
+            lastStatusUpdateAt = Instant.now()
+        )
         return keyRepository.save(updatedKey)
     }
 }

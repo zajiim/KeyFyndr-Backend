@@ -58,5 +58,22 @@ class KeyEntity(
     val ownerId: UUID = UUID.randomUUID(),
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+
+    /**
+     * Location coordinates captured when the key is reported LOST or FOUND.
+     * Null for newly created keys or if the user didn't provide location.
+     */
+    @Column(name = "latitude")
+    var latitude: Double? = null,
+
+    @Column(name = "longitude")
+    var longitude: Double? = null,
+
+    /**
+     * Timestamp of the last status transition (e.g., SAFE→LOST).
+     * Used by the Home Dashboard for recency-based sorting of nearby activities.
+     */
+    @Column(name = "last_status_update_at")
+    var lastStatusUpdateAt: Instant? = null
 )

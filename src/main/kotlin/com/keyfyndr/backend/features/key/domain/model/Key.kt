@@ -21,5 +21,18 @@ data class Key(
     val status: KeyStatus = KeyStatus.SAFE,
     val isActive: Boolean = true,
     val ownerId: UUID,
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+
+    /**
+     * Location coordinates captured when the key is reported LOST or FOUND.
+     * Null when the key is first created (status = SAFE) or if location was not provided.
+     */
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+
+    /**
+     * Timestamp of the last status change (SAFE→LOST, LOST→FOUND, etc.).
+     * Used by the Home Dashboard to sort nearby activities by recency.
+     */
+    val lastStatusUpdateAt: Instant? = null
 )

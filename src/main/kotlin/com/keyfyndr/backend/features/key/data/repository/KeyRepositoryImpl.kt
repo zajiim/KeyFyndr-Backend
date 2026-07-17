@@ -3,6 +3,7 @@ package com.keyfyndr.backend.features.key.data.repository
 import com.keyfyndr.backend.common.response.PageResult
 import com.keyfyndr.backend.features.key.data.mapper.toDomain
 import com.keyfyndr.backend.features.key.data.mapper.toEntity
+import com.keyfyndr.backend.features.key.domain.enums.KeyStatus
 import com.keyfyndr.backend.features.key.domain.model.Key
 import com.keyfyndr.backend.features.key.domain.repository.KeyRepository
 import org.springframework.data.domain.PageRequest
@@ -58,5 +59,13 @@ class KeyRepositoryImpl(
     override fun softDelete(id: UUID) {
         jpaKeyRepository.softDeleteById(id)
     }
-}
 
+    override fun findLatestActiveByOwnerId(ownerId: UUID, limit: Int): List<Key> {
+        val pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"))
+        return jpaKeyRepository.findAllByOwnerIdAndIsActiveTrue(ownerId, pageable)
+            .content.map { it.toDomain() }
+    }
+
+    override fun findAllByStatusInAndLocationNotNull(statuses: List<KeyStatus>): List<Key> =
+        jpaKeyRepository.findAllByStatusInAndLocationNotNull(statuses).map { it.toDomain() }
+}

@@ -24,7 +24,10 @@ fun KeyEntity.toDomain(): Key = Key(
     status = this.status,
     isActive = this.isActive,
     ownerId = this.ownerId,
-    createdAt = this.createdAt
+    createdAt = this.createdAt,
+    latitude = this.latitude,
+    longitude = this.longitude,
+    lastStatusUpdateAt = this.lastStatusUpdateAt
 )
 
 /**
@@ -44,5 +47,8 @@ fun Key.toEntity(): KeyEntity = KeyEntity(
     status = this.status,
     isActive = this.isActive,
     ownerId = this.ownerId,
-    createdAt = this.createdAt
+    createdAt = this.createdAt,
+    latitude = this.latitude,
+    longitude = this.longitude,
+    lastStatusUpdateAt = this.lastStatusUpdateAt
 )

@@ -1,6 +1,7 @@
 package com.keyfyndr.backend.features.key.domain.repository
 
 import com.keyfyndr.backend.common.response.PageResult
+import com.keyfyndr.backend.features.key.domain.enums.KeyStatus
 import com.keyfyndr.backend.features.key.domain.model.Key
 import java.util.UUID
 
@@ -30,5 +31,16 @@ interface KeyRepository {
      * The record remains in the database for audit/recovery purposes.
      */
     fun softDelete(id: UUID)
-}
 
+    /**
+     * Returns the latest [limit] active keys for the owner, sorted by createdAt DESC.
+     * Used by the Home Dashboard for the "My Keys Preview" section.
+     */
+    fun findLatestActiveByOwnerId(ownerId: UUID, limit: Int): List<Key>
+
+    /**
+     * Returns all active keys with the given statuses that have location data.
+     * Used by the Home Dashboard for nearby-key queries (markers + activity feed).
+     */
+    fun findAllByStatusInAndLocationNotNull(statuses: List<KeyStatus>): List<Key>
+}

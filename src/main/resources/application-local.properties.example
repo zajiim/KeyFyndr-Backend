@@ -25,3 +25,7 @@ JWT_SECRET=<your_base64_256bit_jwt_secret>
 # Firebase
 # Set to the path of your service-account.json (relative to classpath root, or absolute path)
 FIREBASE_SERVICE_ACCOUNT_PATH=service-account.json
+
+# Mapbox Static Images API
+# Get your token at https://account.mapbox.com → Tokens
+MAPBOX_API=<your_mapbox_pk_token>

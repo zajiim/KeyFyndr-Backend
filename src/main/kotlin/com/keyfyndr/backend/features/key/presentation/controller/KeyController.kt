@@ -6,6 +6,7 @@ import com.keyfyndr.backend.features.key.presentation.mapper.toPublicResponse
 import com.keyfyndr.backend.features.key.presentation.mapper.toResponse
 import com.keyfyndr.backend.features.key.presentation.mapper.toStatusResponse
 import com.keyfyndr.backend.features.key.presentation.request.CreateKeyRequest
+import com.keyfyndr.backend.features.key.presentation.request.MarkKeyLocationRequest
 import com.keyfyndr.backend.features.key.presentation.response.KeyResponse
 import com.keyfyndr.backend.features.key.presentation.response.KeyStatusResponse
 import com.keyfyndr.backend.features.key.presentation.response.PublicKeyResponse
@@ -103,14 +104,21 @@ class KeyController(
     /**
      * PATCH /api/v1/keys/{id}/lost
      * Mark a key as lost. Only the owner can do this.
+     * Optionally accepts latitude/longitude for nearby-key tracking.
      */
     @PatchMapping("/{id}/lost")
     fun markKeyAsLost(
         @PathVariable id: UUID,
+        @RequestBody(required = false) request: MarkKeyLocationRequest?,
         authentication: Authentication
     ): ResponseEntity<ApiResponse<KeyStatusResponse>> {
         val ownerId = extractUserId(authentication)
-        val key = markKeyAsLostUseCase.execute(id, ownerId)
+        val key = markKeyAsLostUseCase.execute(
+            keyId = id,
+            ownerId = ownerId,
+            latitude = request?.latitude,
+            longitude = request?.longitude
+        )
 
         return ResponseEntity.ok(
             ApiResponse.success(
@@ -123,14 +131,21 @@ class KeyController(
     /**
      * PATCH /api/v1/keys/{id}/found
      * Mark a key as found. Only the owner can do this.
+     * Optionally accepts latitude/longitude for nearby-key tracking.
      */
     @PatchMapping("/{id}/found")
     fun markKeyAsFound(
         @PathVariable id: UUID,
+        @RequestBody(required = false) request: MarkKeyLocationRequest?,
         authentication: Authentication
     ): ResponseEntity<ApiResponse<KeyStatusResponse>> {
         val ownerId = extractUserId(authentication)
-        val key = markKeyAsFoundUseCase.execute(id, ownerId)
+        val key = markKeyAsFoundUseCase.execute(
+            keyId = id,
+            ownerId = ownerId,
+            latitude = request?.latitude,
+            longitude = request?.longitude
+        )
 
         return ResponseEntity.ok(
             ApiResponse.success(
