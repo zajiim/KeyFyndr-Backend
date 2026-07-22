@@ -150,8 +150,8 @@ class KeyBasedNearbyDataProvider(
         if (userLat == null || userLng == null) return null
         return UriComponentsBuilder
             .fromPath("/api/v1/home/map-preview")
-            .queryParam("lat", "%.6f".format(userLat))
-            .queryParam("lng", "%.6f".format(userLng))
+            .queryParam("latitude", "%.6f".format(userLat))
+            .queryParam("longitude", "%.6f".format(userLng))
             .queryParam("theme", theme)
             .build()
             .toUriString()

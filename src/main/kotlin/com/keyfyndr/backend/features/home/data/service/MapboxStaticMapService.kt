@@ -55,35 +55,44 @@ class MapboxStaticMapService(
         private const val MAPBOX_STATIC_BASE = "/styles/v1"
     }
 
-    /**
-     * Fetches the static map image as raw bytes.
-     *
-     * @param userLat   User's current latitude (placed as a blue dot, null = omit)
-     * @param userLng   User's current longitude (placed as a blue dot, null = omit)
-     * @param markers   Nearby key markers to render on the map
-     * @param theme     "light" or "dark" — selects the Mapbox style
-     * @return          PNG image bytes ready to stream to the mobile client,
-     *                  or `null` if the token is unconfigured or the request fails
-     */
-    fun fetchMapImage(
-        userLat: Double?,
-        userLng: Double?,
-        markers: List<NearbyMarker>,
-        theme: String
-    ): ByteArray? {
-        if (props.accessToken.isBlank()) {
-            logger.warn("MAPBOX_API token is not configured — map-preview endpoint will return 503.")
-            return null
-        }
-
-        val style = if (theme == "dark") props.styleDark else props.styleLight
-        val overlay = buildOverlay(userLat, userLng, markers)
-        val retinaFlag = if (props.retina) "@2x" else ""
-        val sizeSegment = "${props.imageWidth}x${props.imageHeight}$retinaFlag"
-
-        // Use `auto` bounding so Mapbox fits all markers in frame automatically.
-        // Falls back to a world-level zoom if there are no markers at all.
-        val positionSegment = if (overlay.isNotBlank()) "auto" else "0,0,1"
+     /**
+      * Fetches the static map image as raw bytes.
+      *
+      * @param userLat   User's current latitude (placed as a blue dot, null = omit)
+      * @param userLng   User's current longitude (placed as a blue dot, null = omit)
+      * @param markers   Nearby key markers to render on the map
+      * @param theme     "light" or "dark" — selects the Mapbox style
+      * @param zoom      Map zoom level (optional, if provided the map will center on user location with this zoom)
+      * @return          PNG image bytes ready to stream to the mobile client,
+      *                  or `null` if the token is unconfigured or the request fails
+      */
+     fun fetchMapImage(
+         userLat: Double?,
+         userLng: Double?,
+         markers: List<NearbyMarker>,
+         theme: String,
+         zoom: Double? = null
+     ): ByteArray? {
+         if (props.accessToken.isBlank()) {
+             logger.warn("MAPBOX_API token is not configured — map-preview endpoint will return 503.")
+             return null
+         }
+ 
+         val style = if (theme == "dark") props.styleDark else props.styleLight
+         val overlay = buildOverlay(userLat, userLng, markers)
+         val retinaFlag = if (props.retina) "@2x" else ""
+         val sizeSegment = "${props.imageWidth}x${props.imageHeight}$retinaFlag"
+ 
+         // If a specific zoom is provided and user location is available, use it to center the map.
+         // Otherwise, use `auto` bounding so Mapbox fits all markers in frame automatically.
+         // Falls back to a world-level zoom if there are no markers at all.
+         val positionSegment = if (zoom != null && userLat != null && userLng != null) {
+             "${formatCoord(userLng)},${formatCoord(userLat)},$zoom"
+         } else if (overlay.isNotBlank()) {
+             "auto"
+         } else {
+             "0,0,1"
+         }
 
         val url = buildUrl(style, overlay, positionSegment, sizeSegment)
         logMaskedUrl(url)

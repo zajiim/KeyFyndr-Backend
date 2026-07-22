@@ -74,7 +74,7 @@ class HomeController(
     }
 
     /**
-     * GET /api/v1/home/map-preview?lat=12.9716&lng=77.5946&theme=dark
+     * GET /api/v1/home/map-preview?latitude=12.9716&longitude=77.5946&theme=dark
      *
      * Proxies the Mapbox Static Images API and returns the map as raw PNG bytes.
      *
@@ -89,17 +89,19 @@ class HomeController(
      * API response, exposing it to anyone who inspects network traffic or decompiles
      * the app. This proxy endpoint keeps the token entirely server-side.
      *
-     * @param lat   User's current latitude (map center)
-     * @param lng   User's current longitude (map center)
+     * @param latitude   User's current latitude (map center)
+     * @param longitude  User's current longitude (map center)
      * @param theme "light" or "dark" map style
+     * @param zoom  Map zoom level
      * @return      PNG image bytes, or 503 if Mapbox is unconfigured, 429 if rate limited
      */
     @GetMapping("/map-preview", produces = [MediaType.IMAGE_PNG_VALUE])
     fun getMapPreview(
         authentication: Authentication,
-        @RequestParam lat: Double,
-        @RequestParam lng: Double,
-        @RequestParam(defaultValue = "light") theme: String
+        @RequestParam latitude: Double,
+        @RequestParam longitude: Double,
+        @RequestParam(defaultValue = "light") theme: String,
+        @RequestParam(defaultValue = "15.0") zoom: Double
     ): ResponseEntity<ByteArray> {
         val userId = extractUserId(authentication)
 
@@ -113,11 +115,11 @@ class HomeController(
         }
 
         // Fetch nearby markers from the DB for this user's location
-        val nearbySummary = nearbyDataProvider.getNearbySummary(userId, lat, lng, theme)
+        val nearbySummary = nearbyDataProvider.getNearbySummary(userId, latitude, longitude, theme)
         val markers: List<NearbyMarker> = nearbySummary.markers
 
         // Fetch the image from Mapbox server-side (token never leaves the backend)
-        val imageBytes = mapboxStaticMapService.fetchMapImage(lat, lng, markers, theme)
+        val imageBytes = mapboxStaticMapService.fetchMapImage(latitude, longitude, markers, theme, zoom)
             ?: return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build()
 
         val remaining = mapRateLimiter.remainingRequests(userId)
